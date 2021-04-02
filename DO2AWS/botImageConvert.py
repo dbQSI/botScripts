@@ -21,6 +21,7 @@ import math
 import csv
 import progressbar as progress
 import datetime as dt
+import logging
 
 
 S3Obj = namedtuple('S3Obj', ['key', 'mtime', 'size', 'ETag'])
@@ -136,7 +137,8 @@ def sendDBfromDF(resource, keyPath, bucketName, dbDF, sqlName, filePath):
     try:
         resource.Bucket(bucketName).upload_file(Filename=filePath, Key=keyPath)
     except botocore.exceptions.ClientError as e:
-        print (str(e))
+        logging.exception("ClientError")
+        # print (str(e))
         raise
     return
 
@@ -191,9 +193,9 @@ def generateJsonScriptForTimeSlider(sortedDFsList, fileName):
         jf.write('sidebar.open("thermView");\n')
         jf.write('var thermViewer = L.map("thermalView", {\n')
         jf.write('  center: [0.0, 0.0], \n')
-        jf.write('  zoom: 11, \n')
+        jf.write('  zoom: 12, \n')
         jf.write('  maxBounds: [[-0.35, -0.25], [0.47, 0.4]], \n')
-        jf.write('  minZoom: 11 \n')
+        jf.write('  minZoom: 12 \n')
         jf.write('});\n\n' )
         jf.write('sidebar.close();\n')
 
@@ -282,6 +284,7 @@ def sendGJSHPfromDF(resource, keyPath, bucketName, dbDF, fileName):
     try:
         dbGDF.to_file(f"./{fileName}", driver='ESRI Shapefile')
     except UserWarning:
+        logging.exception("SHP error")
         pass
     shutil.make_archive(fileName, 'zip', root_dir=fileName)
     shutil.rmtree(fileName)
@@ -294,7 +297,8 @@ def sendGJSHPfromDF(resource, keyPath, bucketName, dbDF, fileName):
         resource.Bucket(bucketName).upload_file(Filename=f"./{fileName}.zip", Key=f'{keyPath}.zip')
         resource.Bucket(bucketName).upload_file(Filename=f"./{fileName}.json", Key=f'{keyPath}.json', ExtraArgs={'ContentType': "text/javascript", 'ACL': "public-read"})
     except botocore.exceptions.ClientError as e:
-        print (str(e))
+        logging.exception("ClientError")
+        # print (str(e))
         raise
 
     return
@@ -482,7 +486,8 @@ def evalJsonData(jsonData, keyFile):
             metaobj['W_metar'] = jsonData['metadata']['metar']['metar_string']
             success = True
         except (KeyError, TypeError) as e:
-            print(f'KeyError/TypeError {e} at {keyFile}')
+            logging.exception("KeyError/TypeError")
+            # print(f'KeyError/TypeError {e} at {keyFile}')
             success = False
 
     if jsonData.get('gps') and success == False:
@@ -493,7 +498,8 @@ def evalJsonData(jsonData, keyFile):
             metaobj['heading'] = float(jsonData['imu']['yaw'])
             success = True
         except (KeyError, TypeError) as e:
-            print(f'KeyError/TypeError {e} at {keyFile}')
+            logging.exception("KeyError/TypeError")
+            # print(f'KeyError/TypeError {e} at {keyFile}')
             success = False
 
     try:
@@ -505,7 +511,8 @@ def evalJsonData(jsonData, keyFile):
         metaobj['px_H'] = int(jsonData['cdp']['pixel_height'])
         metaobj['px_W'] = int(jsonData['cdp']['pixel_width'])
     except (KeyError, TypeError) as e:
-        print(f'KeyError/TypeError {e} at {keyFile}')
+        logging.exception("KeyError/TypeError")
+        # print(f'KeyError/TypeError {e} at {keyFile}')
         success = False
 
     if success == True:
@@ -548,9 +555,11 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                     resource.Bucket(bucketName).download_file(jsonPath, f'./tmp/{keySplit[0]}.lraw.json')
                 except botocore.exceptions.ClientError as e:
                     if e.response['Error']['Code'] == "404":
-                        print("The object does not exist.  skipping...")
+                        logging.exception("The object does not exist.  skipping...")
+                        # print("The object does not exist.  skipping...")
                         continue
                     else:
+                        logging.exception("ClientError")
                         raise
                 # Read the JSON in and start building DataFrame
                 with open(f'./tmp/{keySplit[0]}.lraw.json', "r") as jsonFile:
@@ -558,7 +567,8 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                     metadata = evalJsonData(jsonData, row['key'])
                     #if the metadata is screwed up or missing, just skip the file and move on
                     if metadata == False:
-                        print('metadata error.  skipping file.')
+                        logging.debug(f"metadata error.  skipping file {keySplit[0]}")
+                        # print('metadata error.  skipping file.')
                         continue
                 # '.gray.tif' files are 8-bit versions of the LWIR csv's.  These can be used on maps to visualize thermal data without opening it.
                 if keyFile.endswith('.gray.tif'):
@@ -570,14 +580,16 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                                     metadata['longitude'], metadata['altitude'],
                                     metadata['heading'], runClahe=False, colorBoost=False)
                     except (KeyError, TypeError) as e:
-                        print(f'no {e} key found')
+                        logging.exception("KeyError/TypeError")
+                        # print(f'no {e} key found')
                         continue
                     # Upload new images to output bucket on AWS
                     try:
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.jpg', Key=f'{outAWSDir}/{keySplit[0]}.jpg')
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.thumbnail', Key=f'{outAWSDir}/{keySplit[0]}.thumbnail')
                     except botocore.exceptions.ClientError as e:
-                        print (str(e))
+                        logging.exception("ClientError")
+                        # print (str(e))
                         raise
 
                 # work on other tifs: NIR tifs & RGB tifs which are 1 channel uint16 and 3 channel 8-bit respectively
@@ -589,14 +601,16 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                         setGpsTags(f'./tmp/{keyFile}', './tmp/output', metadata['latitude'],
                                     metadata['longitude'], metadata['altitude'], metadata['heading'])
                     except (KeyError, TypeError) as e:
-                        print(f'no {e} key found')
+                        logging.exception("KeyError/TypeError")
+                        # print(f'no {e} key found')
                         continue
                     # try uploading to AWS output object
                     try:
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.jpg', Key=f'{outAWSDir}/{keySplit[0]}.jpg')
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.thumbnail', Key=f'{outAWSDir}/{keySplit[0]}.thumbnail')
                     except botocore.exceptions.ClientError as e:
-                        print (str(e))
+                        logging.exception("ClientError")
+                        # print (str(e))
                         raise
                 # process the thermal csv's which actually represent the thermal values in celcius (which get converted to F during the 'csvTotiff' function)
                 elif keyExt == '.csv':
@@ -609,7 +623,8 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.csv.tif', Key=f'{outAWSDir}/{keySplit[0]}.csv.tif')
                         resource.Bucket(bucketName).upload_file(Filename=f'./tmp/output/{keyFile}.thumbnail', Key=f'{outAWSDir}/{keySplit[0]}.thumbnail')
                     except botocore.exceptions.ClientError as e:
-                        print (str(e))
+                        logging.exception("ClientError")
+                        # print (str(e))
                         raise
 
                 # add metadata to dataframe, trying new first, then old.  This will land in a GeoJson file for later consumption and a sqlite DB for general use
@@ -624,7 +639,8 @@ def streamImgProcessing(newObjsDF, resource, bucketName):
                 try:
                     shutil.rmtree('./tmp')
                 except OSError as e:
-                    print("Error: %s : %s" % ('./tmp', e.strerror))
+                    logging.exception("OSError")
+                    # print("Error: %s : %s" % ('./tmp', e.strerror))
                 os.makedirs('./tmp/output', exist_ok=True)
 
     metadataDF = pd.DataFrame(metaDF)
@@ -646,7 +662,8 @@ def main(bucketName, resource):
     try:
         shutil.rmtree('./tmp')
     except OSError as e:
-        print("Error: %s : %s" % ('./tmp', e.strerror))
+        logging.exception("exception occurred")
+        # print("Error: %s : %s" % ('./tmp', e.strerror))
     os.makedirs('./tmp/output', exist_ok=True)
 
     # get full listing of 'ARIS_NextEra' bucket and convert to DF
@@ -673,5 +690,6 @@ def main(bucketName, resource):
 if __name__ == "__main__":
     s3_resource = boto3.resource('s3')
     bucketName = 'resources.qsisphere.com'
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
 
     main(bucketName, s3_resource)
