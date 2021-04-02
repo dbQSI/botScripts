@@ -1,0 +1,21 @@
+[WARNING] 2021-04-02 13:33:45,521 - Normalized/laundered field name: 'spectral_prefix' to 'spectral_p'
+[WARNING] 2021-04-02 13:33:45,521 - Normalized/laundered field name: 'exposure_us' to 'exposure_u'
+[WARNING] 2021-04-02 13:33:45,521 - Normalized/laundered field name: 'focal_length' to 'focal_leng'
+[WARNING] 2021-04-02 13:33:45,521 - Normalized/laundered field name: 'W_timestamp' to 'W_timestam'
+[WARNING] 2021-04-02 13:33:45,522 - Normalized/laundered field name: 'W_temperatureF' to 'W_temperat'
+[WARNING] 2021-04-02 13:33:45,522 - Normalized/laundered field name: 'W_temperatureC' to 'W_temper_1'
+[WARNING] 2021-04-02 13:33:45,522 - Normalized/laundered field name: 'W_validation' to 'W_validati'
+[WARNING] 2021-04-02 13:33:45,522 - Normalized/laundered field name: 'W_visibility' to 'W_visibili'
+[WARNING] 2021-04-02 13:33:46,105 - Value 'station: KPBI
+type: routine report, cycle 23 (automatic report)
+time: Fri Feb  5 22:53:00 2021
+temperature: 22.8 C
+dew point: 16.7 C
+wind: SSE at 11 knots
+visibility: 10 miles
+pressure: 1014.2 mb
+sky: a few clouds at 3500 feet
+sea-level pressure: 1014.1 mb
+remarks:
+- Automated station (type 2)
+METAR: KPBI 052253Z 16011KT 10SM FEW035 23/17 A2995 RMK AO2 SLP141 T02280167' of field W_human has been truncated to 254 characters.  This warning will not be emitted any more for that layer.
