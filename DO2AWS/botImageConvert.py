@@ -690,6 +690,7 @@ def main(bucketName, resource):
 if __name__ == "__main__":
     s3_resource = boto3.resource('s3')
     bucketName = 'resources.qsisphere.com'
+    os.chdir('~/scripts/botScripts/DO2AWS')
     logging.basicConfig(filename='botImageConvert.log', filemode='a', format='[%(levelname)s] %(asctime)s - %(message)s', level=logging.WARNING)
 
     main(bucketName, s3_resource)
